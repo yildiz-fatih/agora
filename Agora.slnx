@@ -1,2 +1,6 @@
 <Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/services/">
+    <Project Path="src/services/QuestionSvc/QuestionSvc.csproj" />
+  </Folder>
 </Solution>
