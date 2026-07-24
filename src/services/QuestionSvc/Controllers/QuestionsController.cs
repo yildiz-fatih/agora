@@ -23,21 +23,16 @@ public class QuestionsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateQuestion([FromBody] CreateQuestionRequest request)
     {
-        var authorIdString = User.FindFirstValue("sub");
-        if (string.IsNullOrEmpty(authorIdString))
+        if (!TryGetAuthorId(out var authorId))
         {
-            return BadRequest("Author ID is missing");
+            return BadRequest("Author ID is missing or invalid");
         }
-
-        if (!Guid.TryParse(authorIdString, out var authorIdGuid))
-        {
-            return BadRequest("Author ID is not a Guid");
-        }
+        
         var question = new Question
         {
             Title = request.Title,
             Body = request.Body,
-            AuthorId = authorIdGuid,
+            AuthorId = authorId,
             Tags = request.Tags ?? []
         };
         
@@ -90,15 +85,9 @@ public class QuestionsController : ControllerBase
     [HttpPatch("{id}")]
     public async Task<IActionResult> UpdateQuestion([FromRoute] Guid id, [FromBody] UpdateQuestionRequest request)
     {
-        var authorIdString = User.FindFirstValue("sub");
-        if (string.IsNullOrEmpty(authorIdString))
+        if (!TryGetAuthorId(out var authorId))
         {
-            return BadRequest("Author ID is missing");
-        }
-
-        if (!Guid.TryParse(authorIdString, out var authorIdGuid))
-        {
-            return BadRequest("Author ID is not a Guid");
+            return BadRequest("Author ID is missing or invalid");
         }
         
         var question = await dbContext.Questions.FindAsync(id);
@@ -107,7 +96,7 @@ public class QuestionsController : ControllerBase
             return NotFound($"Question with id {id} not found");
         }
         
-        if (!authorIdGuid.Equals(question.AuthorId))
+        if (!authorId.Equals(question.AuthorId))
         {
             return StatusCode(StatusCodes.Status403Forbidden, "You are not the author of this question");
         }
@@ -125,15 +114,9 @@ public class QuestionsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteQuestion([FromRoute] Guid id)
     {
-        var authorIdString = User.FindFirstValue("sub");
-        if (string.IsNullOrEmpty(authorIdString))
+        if (!TryGetAuthorId(out var authorId))
         {
-            return BadRequest("Author ID is missing");
-        }
-
-        if (!Guid.TryParse(authorIdString, out var authorIdGuid))
-        {
-            return BadRequest("Author ID is not a Guid");
+            return BadRequest("Author ID is missing or invalid");
         }
         
         var question = await dbContext.Questions.FindAsync(id);
@@ -142,7 +125,7 @@ public class QuestionsController : ControllerBase
             return NotFound($"Question with id {id} not found");
         }
         
-        if (!authorIdGuid.Equals(question.AuthorId))
+        if (!authorId.Equals(question.AuthorId))
         {
             return StatusCode(StatusCodes.Status403Forbidden, "You are not the author of this question");
         }
@@ -151,6 +134,19 @@ public class QuestionsController : ControllerBase
         await dbContext.SaveChangesAsync();
         
         return NoContent();
+    }
+
+    private bool TryGetAuthorId(out Guid authorId)
+    {
+        authorId = Guid.Empty;
+        
+        var authorIdString = User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(authorIdString) || !Guid.TryParse(authorIdString, out authorId))
+        {
+            return false;
+        }
+        
+        return true;
     }
     
 }
