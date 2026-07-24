@@ -25,6 +25,7 @@ public class Program
                 options.Authority = keycloakAuthority;
                 options.Audience = keycloakAudience;
                 options.RequireHttpsMetadata = false;
+                options.MapInboundClaims = false;
             });
         builder.Services.AddDbContext<QuestionDbContext>(options =>
             options.UseNpgsql(postgresUrl).UseSnakeCaseNamingConvention());
