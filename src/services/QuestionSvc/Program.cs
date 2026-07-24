@@ -1,40 +1,70 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using QuestionSvc.Data;
 
-DotNetEnv.Env.Load();
+namespace QuestionSvc;
 
-var keycloakAuthority = Environment.GetEnvironmentVariable("KEYCLOAK_AUTHORITY");
-if (string.IsNullOrWhiteSpace(keycloakAuthority))
+public class Program
 {
-    Console.Error.WriteLine("KEYCLOAK_AUTHORITY is not set");
-    Environment.Exit(1);
-}
-
-var keycloakAudience = Environment.GetEnvironmentVariable("KEYCLOAK_AUDIENCE");
-if (string.IsNullOrWhiteSpace(keycloakAudience))
-{
-    Console.Error.WriteLine("KEYCLOAK_AUDIENCE is not set");
-    Environment.Exit(1);
-}
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    public static void Main(string[] args)
     {
-        options.Authority = keycloakAuthority;
-        options.Audience = keycloakAudience;
-        options.RequireHttpsMetadata = false;
-    });
+        DotNetEnv.Env.Load();
 
-var app = builder.Build();
+        var keycloakAuthority = RequireEnv("KEYCLOAK_AUTHORITY");
+        var keycloakAudience = RequireEnv("KEYCLOAK_AUDIENCE");
+        var postgresUrl = RequireEnv("POSTGRES_URL");
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) { app.MapOpenApi(); }
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
+        var builder = WebApplication.CreateBuilder(args);
 
-app.Run();
+        // Add services to the container.
+        builder.Services.AddControllers();
+        builder.Services.AddOpenApi();
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.Authority = keycloakAuthority;
+                options.Audience = keycloakAudience;
+                options.RequireHttpsMetadata = false;
+            });
+        builder.Services.AddDbContext<QuestionDbContext>(options =>
+            options.UseNpgsql(postgresUrl).UseSnakeCaseNamingConvention());
+
+        var app = builder.Build();
+
+        /*
+         * Apply migrations on startup
+         * TODO: Replace this when QuestionSvc is dockerized
+         */
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QuestionDbContext>();
+            try
+            {
+                db.Database.Migrate();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Failed to migrate database: {e.Message}");
+                throw;
+            }
+        }
+
+        // Configure the HTTP request pipeline.
+        if (app.Environment.IsDevelopment()) { app.MapOpenApi(); }
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllers();
+
+        app.Run();
+    }
+    
+    private static string RequireEnv(string name)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Environment variable {name} is not set");
+        }
+        return value;
+    }
+}
