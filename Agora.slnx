@@ -2,5 +2,6 @@
   <Folder Name="/src/" />
   <Folder Name="/src/services/">
     <Project Path="src/services/QuestionSvc/QuestionSvc.csproj" />
+    <Project Path="src/services/SearchSvc/SearchSvc.csproj" />
   </Folder>
 </Solution>
