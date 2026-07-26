@@ -24,6 +24,18 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.50.0
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_KEY}
+      MEILI_ENV: "development"
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili-data:/meili_data
+
 volumes:
   keycloak-data:
   postgres-data:
+  meili-data:
