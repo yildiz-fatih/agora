@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuestionSvc.Data;
 using QuestionSvc.DTOs;
 using QuestionSvc.Models;
+using Wolverine;
 
 namespace QuestionSvc.Controllers;
 
@@ -13,10 +15,12 @@ namespace QuestionSvc.Controllers;
 public class QuestionsController : ControllerBase
 {
     private QuestionDbContext dbContext;
+    private IMessageBus messageBus;
 
-    public QuestionsController(QuestionDbContext dbContext)
+    public QuestionsController(QuestionDbContext dbContext, IMessageBus messageBus)
     {
         this.dbContext = dbContext;
+        this.messageBus = messageBus;
     }
     
     [Authorize]
@@ -38,6 +42,11 @@ public class QuestionsController : ControllerBase
         
         dbContext.Questions.Add(question);
         await dbContext.SaveChangesAsync();
+
+        /* TODO: transactional outbox - make the msg publish and DB save part of the same transaction */
+        var questionCreatedMsg =
+            new QuestionCreated(question.Id, question.Title, question.Body, question.Tags, question.CreatedAt);
+        await messageBus.PublishAsync(questionCreatedMsg);
 
         var questionResponse = new QuestionResponse(question.Id, question.Title, question.Body, question.CreatedAt,
             question.AuthorId, question.Tags);
@@ -107,6 +116,9 @@ public class QuestionsController : ControllerBase
         
         await dbContext.SaveChangesAsync();
         
+        var questionUpdatedMsg = new QuestionUpdated(question.Id, question.Title, question.Body, question.Tags);
+        await messageBus.PublishAsync(questionUpdatedMsg);
+        
         return NoContent();
     }
 
@@ -132,6 +144,9 @@ public class QuestionsController : ControllerBase
 
         dbContext.Remove(question);
         await dbContext.SaveChangesAsync();
+        
+        var questionDeletedMsg = new QuestionDeleted(question.Id);
+        await messageBus.PublishAsync(questionDeletedMsg);
         
         return NoContent();
     }

@@ -1,6 +1,8 @@
 using Meilisearch;
 using Microsoft.AspNetCore.Mvc;
 using SearchSvc.Models;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 namespace SearchSvc;
 
@@ -12,6 +14,7 @@ public class Program
 
         var meiliUrl = RequireEnv("MEILI_URL");
         var meiliKey = RequireEnv("MEILI_KEY");
+        var rabbitmqUrl = RequireEnv("RABBITMQ_URL");
         
         var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +23,14 @@ public class Program
         builder.Services.AddSingleton(
             new MeilisearchClient(meiliUrl, meiliKey)
         );
+        builder.Host.UseWolverine(options =>
+        {
+            options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
+            options.ListenToRabbitQueue("search", listenOptions =>
+            {
+                listenOptions.BindExchange("questions");
+            });
+        });
 
         var app = builder.Build();
         

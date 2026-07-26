@@ -1,6 +1,9 @@
+using Contracts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using QuestionSvc.Data;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 namespace QuestionSvc;
 
@@ -13,6 +16,7 @@ public class Program
         var keycloakAuthority = RequireEnv("KEYCLOAK_AUTHORITY");
         var keycloakAudience = RequireEnv("KEYCLOAK_AUDIENCE");
         var postgresUrl = RequireEnv("POSTGRES_URL");
+        var rabbitmqUrl = RequireEnv("RABBITMQ_URL");
 
         var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +33,14 @@ public class Program
             });
         builder.Services.AddDbContext<QuestionDbContext>(options =>
             options.UseNpgsql(postgresUrl).UseSnakeCaseNamingConvention());
-
+        builder.Host.UseWolverine(options =>
+        {
+            options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
+            options.PublishMessage<QuestionCreated>().ToRabbitExchange("questions");
+            options.PublishMessage<QuestionUpdated>().ToRabbitExchange("questions");
+            options.PublishMessage<QuestionDeleted>().ToRabbitExchange("questions");
+        });
+        
         var app = builder.Build();
 
         /*
