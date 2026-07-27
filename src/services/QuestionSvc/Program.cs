@@ -14,6 +14,7 @@ public class Program
         DotNetEnv.Env.Load();
 
         var keycloakAuthority = RequireEnv("KEYCLOAK_AUTHORITY");
+        var keycloakIssuer = RequireEnv("KEYCLOAK_ISSUER");
         var keycloakAudience = RequireEnv("KEYCLOAK_AUDIENCE");
         var postgresUrl = RequireEnv("POSTGRES_URL");
         var rabbitmqUrl = RequireEnv("RABBITMQ_URL");
@@ -30,6 +31,7 @@ public class Program
                 options.Audience = keycloakAudience;
                 options.RequireHttpsMetadata = false;
                 options.MapInboundClaims = false;
+                options.TokenValidationParameters.ValidIssuer = keycloakIssuer;
             });
         builder.Services.AddDbContext<QuestionDbContext>(options =>
             options.UseNpgsql(postgresUrl).UseSnakeCaseNamingConvention());
