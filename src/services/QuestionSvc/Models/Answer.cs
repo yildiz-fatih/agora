@@ -3,7 +3,7 @@ namespace QuestionSvc.Models;
 public class Answer
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public required string Body { get; init; }
+    public required string Body { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public required Guid AuthorId { get; init; }
     

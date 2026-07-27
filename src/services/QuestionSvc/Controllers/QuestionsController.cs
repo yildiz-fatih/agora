@@ -1,10 +1,10 @@
-using System.Security.Claims;
 using Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuestionSvc.Data;
 using QuestionSvc.DTOs;
+using QuestionSvc.Helpers;
 using QuestionSvc.Models;
 using Wolverine;
 
@@ -27,7 +27,7 @@ public class QuestionsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateQuestion([FromBody] CreateQuestionRequest request)
     {
-        if (!TryGetAuthorId(out var authorId))
+        if (!AuthHelpers.TryGetAuthorId(User, out var authorId))
         {
             return BadRequest("Author ID is missing or invalid");
         }
@@ -94,7 +94,7 @@ public class QuestionsController : ControllerBase
     [HttpPatch("{id}")]
     public async Task<IActionResult> UpdateQuestion([FromRoute] Guid id, [FromBody] UpdateQuestionRequest request)
     {
-        if (!TryGetAuthorId(out var authorId))
+        if (!AuthHelpers.TryGetAuthorId(User, out var authorId))
         {
             return BadRequest("Author ID is missing or invalid");
         }
@@ -126,7 +126,7 @@ public class QuestionsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteQuestion([FromRoute] Guid id)
     {
-        if (!TryGetAuthorId(out var authorId))
+        if (!AuthHelpers.TryGetAuthorId(User, out var authorId))
         {
             return BadRequest("Author ID is missing or invalid");
         }
@@ -151,17 +151,6 @@ public class QuestionsController : ControllerBase
         return NoContent();
     }
 
-    private bool TryGetAuthorId(out Guid authorId)
-    {
-        authorId = Guid.Empty;
-        
-        var authorIdString = User.FindFirstValue("sub");
-        if (string.IsNullOrEmpty(authorIdString) || !Guid.TryParse(authorIdString, out authorId))
-        {
-            return false;
-        }
-        
-        return true;
-    }
+
     
 }
