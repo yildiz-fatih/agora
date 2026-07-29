@@ -110,6 +110,21 @@ services:
     depends_on:
       - questionsvc
       - searchsvc
+      - profilesvc
+    restart: unless-stopped
+  
+  profilesvc:
+    build:
+      context: src/services/ProfileSvc
+    env_file:
+      - src/services/ProfileSvc/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "7003:8080"
     restart: unless-stopped
 
 volumes:
