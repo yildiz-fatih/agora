@@ -48,8 +48,8 @@ public class QuestionsController : ControllerBase
             new QuestionCreated(question.Id, question.Title, question.Body, question.Tags, question.CreatedAt);
         await messageBus.PublishAsync(questionCreatedMsg);
 
-        var questionResponse = new QuestionResponse(question.Id, question.Title, question.Body, question.CreatedAt,
-            question.AuthorId, question.Tags);
+        var questionResponse = new QuestionResponse(question.Id, question.Title, question.Body, question.Score,
+            question.CreatedAt, question.AuthorId, question.Tags);
         
         return Created($"/questions/{question.Id}", questionResponse);
     }
@@ -65,7 +65,7 @@ public class QuestionsController : ControllerBase
         }
 
         var questionsResponse = await query.OrderByDescending(q => q.CreatedAt)
-            .Select(q => new QuestionResponse(q.Id, q.Title, q.Body, q.CreatedAt, q.AuthorId, q.Tags)).ToListAsync();
+            .Select(q => new QuestionResponse(q.Id, q.Title, q.Body, q.Score, q.CreatedAt, q.AuthorId, q.Tags)).ToListAsync();
         
         return Ok(questionsResponse);
     }
@@ -82,10 +82,13 @@ public class QuestionsController : ControllerBase
         }
 
         var answersResponse = question.Answers
-            .Select(a => new AnswerResponse(a.Id, a.Body, a.CreatedAt, a.AuthorId, a.QuestionId)).ToList();
+            .OrderByDescending(a => a.Score)
+            .ThenBy(a => a.CreatedAt)
+            .Select(a => new AnswerResponse(a.Id, a.Body, a.Score, a.CreatedAt, a.AuthorId, a.QuestionId))
+            .ToList();
 
         var questionDetailsResponse = new QuestionDetailsResponse(question.Id, question.Title, question.Body,
-            question.CreatedAt, question.AuthorId, question.Tags, answersResponse);
+            question.Score, question.CreatedAt, question.AuthorId, question.Tags, answersResponse);
         
         return Ok(questionDetailsResponse);
     }

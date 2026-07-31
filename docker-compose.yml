@@ -111,6 +111,7 @@ services:
       - questionsvc
       - searchsvc
       - profilesvc
+      - votesvc
     restart: unless-stopped
   
   profilesvc:
@@ -125,6 +126,24 @@ services:
         condition: service_started
     ports:
       - "7003:8080"
+    restart: unless-stopped
+    
+  votesvc:
+    build:
+      context: src/services/VoteSvc
+      additional_contexts:
+        contracts: src/shared/Contracts
+    env_file:
+      - src/services/VoteSvc/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "7004:8080"
     restart: unless-stopped
 
 volumes:

@@ -44,7 +44,8 @@ public class AnswersController : ControllerBase
         dbContext.Answers.Add(answer);
         await dbContext.SaveChangesAsync();
 
-        var answerResponse = new AnswerResponse(answer.Id, answer.Body, answer.CreatedAt, answer.AuthorId, answer.QuestionId);
+        var answerResponse = new AnswerResponse(answer.Id, answer.Body, answer.Score, answer.CreatedAt, answer.AuthorId,
+            answer.QuestionId);
         
         return StatusCode(StatusCodes.Status201Created, answerResponse);
     }
