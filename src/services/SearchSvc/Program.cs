@@ -26,9 +26,11 @@ public class Program
         builder.Host.UseWolverine(options =>
         {
             options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
-            options.ListenToRabbitQueue("search", listenOptions =>
+            options.ListenToRabbitQueue("searchsvc-questions", listenOptions =>
             {
-                listenOptions.BindExchange("questions");
+                listenOptions.BindExchange("questions", bindingKey: "created");
+                listenOptions.BindExchange("questions", bindingKey: "updated");
+                listenOptions.BindExchange("questions", bindingKey: "deleted");
             });
         });
 

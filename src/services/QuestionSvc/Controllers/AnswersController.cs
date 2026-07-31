@@ -1,3 +1,4 @@
+using Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using QuestionSvc.Data;
 using QuestionSvc.DTOs;
 using QuestionSvc.Helpers;
 using QuestionSvc.Models;
+using Wolverine;
 
 namespace QuestionSvc.Controllers;
 
@@ -14,10 +16,12 @@ namespace QuestionSvc.Controllers;
 public class AnswersController : ControllerBase
 {
     private QuestionDbContext dbContext;
+    private IMessageBus messageBus;
 
-    public AnswersController(QuestionDbContext dbContext)
+    public AnswersController(QuestionDbContext dbContext, IMessageBus messageBus)
     {
         this.dbContext = dbContext;
+        this.messageBus = messageBus;
     }
 
     [HttpPost]
@@ -43,6 +47,9 @@ public class AnswersController : ControllerBase
 
         dbContext.Answers.Add(answer);
         await dbContext.SaveChangesAsync();
+        
+        /* TODO: transactional outbox */
+        await messageBus.PublishAsync(new AnswerCreated(answer.Id, answer.QuestionId));
 
         var answerResponse = new AnswerResponse(answer.Id, answer.Body, answer.Score, answer.CreatedAt, answer.AuthorId,
             answer.QuestionId);
@@ -109,6 +116,8 @@ public class AnswersController : ControllerBase
 
         dbContext.Answers.Remove(answer);
         await dbContext.SaveChangesAsync();
+        
+        await messageBus.PublishAsync(new AnswerDeleted(answer.Id));
         
         return NoContent();
     }

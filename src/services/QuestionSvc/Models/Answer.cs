@@ -1,5 +1,5 @@
 namespace QuestionSvc.Models;
-
+    
 public class Answer
 {
     public Guid Id { get; init; } = Guid.NewGuid();

@@ -61,7 +61,12 @@ public class VotesController : ControllerBase
             return BadRequest("Value must be 1 or -1"); 
         }
         
-        // TODO (possible "bug"): look up targetId in a local table (NO sync coupling!) -> 404 if not found
+        var exists = await dbContext.LocalVoteTargets
+            .AnyAsync(t => t.TargetId == targetId && t.TargetType == targetType);
+        if (!exists)
+        {
+            return NotFound("Target ID not found");
+        }
         
         // Upsert the vote row (try to insert, if it exists -> update the value)
         await dbContext.Votes
@@ -93,7 +98,12 @@ public class VotesController : ControllerBase
             return Unauthorized("User ID is missing or invalid");
         }
         
-        // TODO (possible "bug"): look up targetId in a local table (NO sync coupling!) -> 404 if not found
+        var exists = await dbContext.LocalVoteTargets
+            .AnyAsync(t => t.TargetId == targetId && t.TargetType == targetType);
+        if (!exists)
+        {
+            return NotFound("Target ID not found");
+        }
         
         // Delete the matching row, do nothing if no such row exists
         await dbContext.Votes

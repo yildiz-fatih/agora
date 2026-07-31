@@ -33,14 +33,23 @@ public class Program
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters.ValidIssuer = keycloakIssuer;
             });
-        builder.Services.AddDbContext<VoteDbContext>(options =>
-            options.UseNpgsql(postgresUrl).UseSnakeCaseNamingConvention());
+        builder.Services.AddDbContext<VoteDbContext>(
+            options => options.UseNpgsql(postgresUrl).UseSnakeCaseNamingConvention(),
+            optionsLifetime: ServiceLifetime.Singleton); // Wolverine needs this to build handlers that use EF
         builder.Host.UseWolverine(options =>
         {
             options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
             
             options.PublishMessage<QuestionScoreUpdated>().ToRabbitExchange("votes");
             options.PublishMessage<AnswerScoreUpdated>().ToRabbitExchange("votes");
+
+            options.ListenToRabbitQueue("votesvc", listenOptions =>
+            {
+                listenOptions.BindExchange("questions", bindingKey: "created");
+                listenOptions.BindExchange("questions", bindingKey: "deleted");
+                listenOptions.BindExchange("answers", bindingKey: "created");
+                listenOptions.BindExchange("answers", bindingKey: "deleted");
+            });
         });
 
         var app = builder.Build();

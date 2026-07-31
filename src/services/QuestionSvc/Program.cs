@@ -39,11 +39,13 @@ public class Program
         builder.Host.UseWolverine(options =>
         {
             options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
-            
-            options.PublishMessage<QuestionCreated>().ToRabbitExchange("questions");
-            options.PublishMessage<QuestionUpdated>().ToRabbitExchange("questions");
-            options.PublishMessage<QuestionDeleted>().ToRabbitExchange("questions");
-            
+
+            options.PublishMessage<QuestionCreated>().ToRabbitRoutingKey("questions", "created");
+            options.PublishMessage<QuestionUpdated>().ToRabbitRoutingKey("questions", "updated");
+            options.PublishMessage<QuestionDeleted>().ToRabbitRoutingKey("questions", "deleted");
+            options.PublishMessage<AnswerCreated>().ToRabbitRoutingKey("answers", "created");
+            options.PublishMessage<AnswerDeleted>().ToRabbitRoutingKey("answers", "deleted");
+
             options.ListenToRabbitQueue("questionsvc-votes", listenOptions =>
             {
                 listenOptions.BindExchange("votes");
