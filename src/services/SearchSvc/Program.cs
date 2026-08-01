@@ -15,11 +15,19 @@ public class Program
         var meiliUrl = RequireEnv("MEILI_URL");
         var meiliKey = RequireEnv("MEILI_KEY");
         var rabbitmqUrl = RequireEnv("RABBITMQ_URL");
+        var frontendUrl = RequireEnv("FRONTEND_URL");
         
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
         builder.Services.AddOpenApi();
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowFrontend", policy => policy
+                .WithOrigins(frontendUrl)
+                .AllowAnyMethod()
+                .AllowAnyHeader());
+        });
         builder.Services.AddSingleton(
             new MeilisearchClient(meiliUrl, meiliKey)
         );
@@ -60,6 +68,7 @@ public class Program
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment()) { app.MapOpenApi(); }
+        app.UseCors("AllowFrontend");
 
         app.MapGet("/search", async (
             [FromQuery] string q,

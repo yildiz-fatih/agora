@@ -18,12 +18,20 @@ public class Program
         var keycloakAudience = RequireEnv("KEYCLOAK_AUDIENCE");
         var postgresUrl = RequireEnv("POSTGRES_URL");
         var rabbitmqUrl = RequireEnv("RABBITMQ_URL");
+        var frontendUrl = RequireEnv("FRONTEND_URL");
         
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowFrontend", policy => policy
+                .WithOrigins(frontendUrl)
+                .AllowAnyMethod()
+                .AllowAnyHeader());
+        });
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -73,6 +81,7 @@ public class Program
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment()) { app.MapOpenApi(); }
+        app.UseCors("AllowFrontend");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
