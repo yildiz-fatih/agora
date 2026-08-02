@@ -6,7 +6,7 @@ using QuestionSvc.Data;
 using QuestionSvc.DTOs;
 using QuestionSvc.Helpers;
 using QuestionSvc.Models;
-using Wolverine;
+using Wolverine.EntityFrameworkCore;
 
 namespace QuestionSvc.Controllers;
 
@@ -15,12 +15,12 @@ namespace QuestionSvc.Controllers;
 public class QuestionsController : ControllerBase
 {
     private QuestionDbContext dbContext;
-    private IMessageBus messageBus;
+    private IDbContextOutbox<QuestionDbContext> outbox;
 
-    public QuestionsController(QuestionDbContext dbContext, IMessageBus messageBus)
+    public QuestionsController(QuestionDbContext dbContext, IDbContextOutbox<QuestionDbContext> outbox)
     {
         this.dbContext = dbContext;
-        this.messageBus = messageBus;
+        this.outbox = outbox;
     }
     
     [Authorize]
@@ -46,13 +46,13 @@ public class QuestionsController : ControllerBase
             Tags = request.Tags ?? []
         };
         
-        dbContext.Questions.Add(question);
-        await dbContext.SaveChangesAsync();
-
-        /* TODO: transactional outbox - make the msg publish and DB save part of the same transaction */
+        outbox.DbContext.Questions.Add(question);
+        
         var questionCreatedMsg = new QuestionCreated(question.Id, question.Title, question.Body, question.Tags,
             question.CreatedAt, question.AuthorId, question.AuthorUsername);
-        await messageBus.PublishAsync(questionCreatedMsg);
+        await outbox.PublishAsync(questionCreatedMsg);
+
+        await outbox.SaveChangesAndFlushMessagesAsync();
 
         var questionResponse = new QuestionResponse(question.Id, question.Title, question.Body, question.Score,
             question.CreatedAt, question.AuthorId, authorUsername, question.Tags, 0);
@@ -110,7 +110,7 @@ public class QuestionsController : ControllerBase
             return BadRequest("Author ID is missing or invalid");
         }
         
-        var question = await dbContext.Questions.FindAsync(id);
+        var question = await outbox.DbContext.Questions.FindAsync(id);
         if (question is null)
         {
             return NotFound($"Question with id {id} not found");
@@ -125,10 +125,10 @@ public class QuestionsController : ControllerBase
         if (!string.IsNullOrEmpty(request.Body)) question.Body = request.Body;
         if (request.Tags is not null) question.Tags = request.Tags;
         
-        await dbContext.SaveChangesAsync();
-        
         var questionUpdatedMsg = new QuestionUpdated(question.Id, question.Title, question.Body, question.Tags);
-        await messageBus.PublishAsync(questionUpdatedMsg);
+        await outbox.PublishAsync(questionUpdatedMsg);
+        
+        await outbox.SaveChangesAndFlushMessagesAsync();
         
         return NoContent();
     }
@@ -142,7 +142,7 @@ public class QuestionsController : ControllerBase
             return BadRequest("Author ID is missing or invalid");
         }
         
-        var question = await dbContext.Questions.FindAsync(id);
+        var question = await outbox.DbContext.Questions.FindAsync(id);
         if (question is null)
         {
             return NotFound($"Question with id {id} not found");
@@ -153,15 +153,14 @@ public class QuestionsController : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, "You are not the author of this question");
         }
 
-        dbContext.Remove(question);
-        await dbContext.SaveChangesAsync();
+        outbox.DbContext.Remove(question);
         
         var questionDeletedMsg = new QuestionDeleted(question.Id);
-        await messageBus.PublishAsync(questionDeletedMsg);
+        await outbox.PublishAsync(questionDeletedMsg);
+        
+        await outbox.SaveChangesAndFlushMessagesAsync();
         
         return NoContent();
     }
-
-
     
 }

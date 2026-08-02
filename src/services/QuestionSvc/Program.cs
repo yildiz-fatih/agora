@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using QuestionSvc.Data;
 using Wolverine;
+using Wolverine.EntityFrameworkCore;
+using Wolverine.Postgresql;
 using Wolverine.RabbitMQ;
 
 namespace QuestionSvc;
@@ -48,16 +50,19 @@ public class Program
         {
             options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
 
-            options.PublishMessage<QuestionCreated>().ToRabbitRoutingKey("questions", "created");
-            options.PublishMessage<QuestionUpdated>().ToRabbitRoutingKey("questions", "updated");
-            options.PublishMessage<QuestionDeleted>().ToRabbitRoutingKey("questions", "deleted");
-            options.PublishMessage<AnswerCreated>().ToRabbitRoutingKey("answers", "created");
-            options.PublishMessage<AnswerDeleted>().ToRabbitRoutingKey("answers", "deleted");
-
             options.ListenToRabbitQueue("questionsvc-votes", listenOptions =>
             {
                 listenOptions.BindExchange("votes");
             });
+            
+            options.PublishMessage<QuestionCreated>().ToRabbitRoutingKey("questions", "created").UseDurableOutbox();
+            options.PublishMessage<QuestionUpdated>().ToRabbitRoutingKey("questions", "updated").UseDurableOutbox();
+            options.PublishMessage<QuestionDeleted>().ToRabbitRoutingKey("questions", "deleted").UseDurableOutbox();
+            options.PublishMessage<AnswerCreated>().ToRabbitRoutingKey("answers", "created").UseDurableOutbox();
+            options.PublishMessage<AnswerDeleted>().ToRabbitRoutingKey("answers", "deleted").UseDurableOutbox();
+            
+            options.PersistMessagesWithPostgresql(postgresUrl);
+            options.UseEntityFrameworkCoreTransactions();
         });
         
         var app = builder.Build();

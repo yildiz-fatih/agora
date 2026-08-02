@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using VoteSvc.Data;
 using Wolverine;
+using Wolverine.EntityFrameworkCore;
+using Wolverine.Postgresql;
 using Wolverine.RabbitMQ;
 
 namespace VoteSvc;
@@ -48,9 +50,6 @@ public class Program
         {
             options.UseRabbitMq(new Uri(rabbitmqUrl)).AutoProvision();
             
-            options.PublishMessage<QuestionScoreUpdated>().ToRabbitExchange("votes");
-            options.PublishMessage<AnswerScoreUpdated>().ToRabbitExchange("votes");
-
             options.ListenToRabbitQueue("votesvc", listenOptions =>
             {
                 listenOptions.BindExchange("questions", bindingKey: "created");
@@ -58,6 +57,12 @@ public class Program
                 listenOptions.BindExchange("answers", bindingKey: "created");
                 listenOptions.BindExchange("answers", bindingKey: "deleted");
             });
+            
+            options.PublishMessage<QuestionScoreUpdated>().ToRabbitExchange("votes").UseDurableOutbox();
+            options.PublishMessage<AnswerScoreUpdated>().ToRabbitExchange("votes").UseDurableOutbox();
+            
+            options.PersistMessagesWithPostgresql(postgresUrl);
+            options.UseEntityFrameworkCoreTransactions();
         });
 
         var app = builder.Build();

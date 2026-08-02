@@ -6,7 +6,7 @@ using QuestionSvc.Data;
 using QuestionSvc.DTOs;
 using QuestionSvc.Helpers;
 using QuestionSvc.Models;
-using Wolverine;
+using Wolverine.EntityFrameworkCore;
 
 namespace QuestionSvc.Controllers;
 
@@ -16,12 +16,12 @@ namespace QuestionSvc.Controllers;
 public class AnswersController : ControllerBase
 {
     private QuestionDbContext dbContext;
-    private IMessageBus messageBus;
+    private IDbContextOutbox<QuestionDbContext> outbox;
 
-    public AnswersController(QuestionDbContext dbContext, IMessageBus messageBus)
+    public AnswersController(QuestionDbContext dbContext, IDbContextOutbox<QuestionDbContext> outbox)
     {
         this.dbContext = dbContext;
-        this.messageBus = messageBus;
+        this.outbox = outbox;
     }
 
     [HttpPost]
@@ -37,7 +37,7 @@ public class AnswersController : ControllerBase
             return BadRequest("Author username is missing or invalid");
         }
         
-        var questionExists = await dbContext.Questions.AnyAsync(q => q.Id == questionId);
+        var questionExists = await outbox.DbContext.Questions.AnyAsync(q => q.Id == questionId);
         if (!questionExists)
         {
             return NotFound($"Question with id {questionId} not found");
@@ -51,12 +51,12 @@ public class AnswersController : ControllerBase
             QuestionId = questionId
         };
 
-        dbContext.Answers.Add(answer);
-        await dbContext.SaveChangesAsync();
+        outbox.DbContext.Answers.Add(answer);
         
-        /* TODO: transactional outbox */
-        await messageBus.PublishAsync(new AnswerCreated(answer.Id, answer.QuestionId));
+        await outbox.PublishAsync(new AnswerCreated(answer.Id, answer.QuestionId));
 
+        await outbox.SaveChangesAndFlushMessagesAsync();
+        
         var answerResponse = new AnswerResponse(answer.Id, answer.Body, answer.Score, answer.CreatedAt, answer.AuthorId,
             answer.AuthorUsername, answer.QuestionId);
         
@@ -104,7 +104,7 @@ public class AnswersController : ControllerBase
             return BadRequest("Author ID is missing or invalid");
         }
         
-        var answer = await dbContext.Answers.FindAsync(answerId);
+        var answer = await outbox.DbContext.Answers.FindAsync(answerId);
         if (answer is null)
         {
             return NotFound($"Answer with id {answerId} not found");
@@ -120,10 +120,9 @@ public class AnswersController : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, "You are not the author of this answer");
         }
 
-        dbContext.Answers.Remove(answer);
-        await dbContext.SaveChangesAsync();
-        
-        await messageBus.PublishAsync(new AnswerDeleted(answer.Id));
+        outbox.DbContext.Answers.Remove(answer);
+        await outbox.PublishAsync(new AnswerDeleted(answer.Id));
+        await outbox.SaveChangesAndFlushMessagesAsync();
         
         return NoContent();
     }

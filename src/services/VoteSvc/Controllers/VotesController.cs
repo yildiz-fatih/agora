@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using VoteSvc.Data;
 using VoteSvc.DTOs;
 using VoteSvc.Models;
-using Wolverine;
+using Wolverine.EntityFrameworkCore;
 
 namespace VoteSvc.Controllers;
 
@@ -16,12 +16,12 @@ namespace VoteSvc.Controllers;
 public class VotesController : ControllerBase
 {
     private VoteDbContext dbContext;
-    private IMessageBus messageBus;
+    private IDbContextOutbox<VoteDbContext> outbox;
 
-    public VotesController(VoteDbContext dbContext, IMessageBus messageBus)
+    public VotesController(VoteDbContext dbContext, IDbContextOutbox<VoteDbContext> outbox)
     {
         this.dbContext = dbContext;
-        this.messageBus = messageBus;
+        this.outbox = outbox;
     }
     
     [HttpGet("me")]
@@ -98,34 +98,48 @@ public class VotesController : ControllerBase
             return BadRequest("Value must be 1 or -1"); 
         }
         
-        var exists = await dbContext.LocalVoteTargets
+        var exists = await outbox.DbContext.LocalVoteTargets
             .AnyAsync(t => t.TargetId == targetId && t.TargetType == targetType);
         if (!exists)
         {
             return NotFound("Target ID not found");
         }
         
-        // Upsert the vote row (try to insert, if it exists -> update the value)
-        await dbContext.Votes
-            .Upsert(new Vote
-                { VoterId = voterId, TargetId = targetId, TargetType = targetType, Value = request.Value })
-            .On(v => new { v.VoterId, v.TargetId, v.TargetType })
-            .WhenMatched(v => new Vote {Value = request.Value})
-            .RunAsync();
-        
-        var score = await GetScore(targetId, targetType);
-        
-        // TODO: transactional outbox for db upsert and msg publish
-        if (targetType == VoteTargetType.Question)
+        await using (var transaction = await outbox.DbContext.Database.BeginTransactionAsync())
         {
-            await messageBus.PublishAsync(new QuestionScoreUpdated(targetId, score));    
-        }
-        else if (targetType == VoteTargetType.Answer)
-        {
-            await messageBus.PublishAsync(new AnswerScoreUpdated(targetId, score));
+            try
+            {
+                // Upsert the vote row (try to insert, if it exists -> update the value)
+                await outbox.DbContext.Votes
+                    .Upsert(new Vote
+                        { VoterId = voterId, TargetId = targetId, TargetType = targetType, Value = request.Value })
+                    .On(v => new { v.VoterId, v.TargetId, v.TargetType })
+                    .WhenMatched(v => new Vote {Value = request.Value})
+                    .RunAsync();
+        
+                var score = await GetScore(outbox.DbContext, targetId, targetType);
+        
+                if (targetType == VoteTargetType.Question)
+                {
+                    await outbox.PublishAsync(new QuestionScoreUpdated(targetId, score));    
+                }
+                else if (targetType == VoteTargetType.Answer)
+                {
+                    await outbox.PublishAsync(new AnswerScoreUpdated(targetId, score));
+                }
+
+                await outbox.SaveChangesAndFlushMessagesAsync();
+                // no transaction.CommitAsync() here -> SaveChangesAndFlushMessagesAsync already committed it
+        
+                return Ok(new VoteResponse(targetId, targetType.ToString(), score));
+            }
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
         
-        return Ok(new VoteResponse(targetId, targetType.ToString(), score));
     }
 
     private async Task<IActionResult> ClearVote(Guid targetId, VoteTargetType targetType)
@@ -135,31 +149,44 @@ public class VotesController : ControllerBase
             return Unauthorized("User ID is missing or invalid");
         }
         
-        var exists = await dbContext.LocalVoteTargets
+        var exists = await outbox.DbContext.LocalVoteTargets
             .AnyAsync(t => t.TargetId == targetId && t.TargetType == targetType);
         if (!exists)
         {
             return NotFound("Target ID not found");
         }
-        
-        // Delete the matching row, do nothing if no such row exists
-        await dbContext.Votes
-            .Where(v => v.VoterId == voterId && v.TargetId == targetId && v.TargetType == targetType)
-            .ExecuteDeleteAsync();
-        
-        var score = await GetScore(targetId, targetType);
-        
-        // TODO: transactional outbox for db delete and msg publish
-        if (targetType == VoteTargetType.Question)
+
+        await using (var transaction = await outbox.DbContext.Database.BeginTransactionAsync())
         {
-            await messageBus.PublishAsync(new QuestionScoreUpdated(targetId, score));
-        }
-        else if (targetType == VoteTargetType.Answer)
-        {
-            await messageBus.PublishAsync(new AnswerScoreUpdated(targetId, score));
-        }
+            try
+            {
+                // Delete the matching row, do nothing if no such row exists
+                await outbox.DbContext.Votes
+                    .Where(v => v.VoterId == voterId && v.TargetId == targetId && v.TargetType == targetType)
+                    .ExecuteDeleteAsync();
         
-        return Ok(new VoteResponse(targetId, targetType.ToString(), score));
+                var score = await GetScore(outbox.DbContext, targetId, targetType);
+        
+                if (targetType == VoteTargetType.Question)
+                {
+                    await outbox.PublishAsync(new QuestionScoreUpdated(targetId, score));
+                }
+                else if (targetType == VoteTargetType.Answer)
+                {
+                    await outbox.PublishAsync(new AnswerScoreUpdated(targetId, score));
+                }
+        
+                await outbox.SaveChangesAndFlushMessagesAsync();
+                // no transaction.CommitAsync() here -> SaveChangesAndFlushMessagesAsync already committed it
+        
+                return Ok(new VoteResponse(targetId, targetType.ToString(), score));
+            }
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
  
     private static bool TryGetVoterId(ClaimsPrincipal user, out Guid voterId)
@@ -175,7 +202,7 @@ public class VotesController : ControllerBase
         return true;
     }
 
-    private async Task<int> GetScore(Guid targetId, VoteTargetType targetType)
+    private static async Task<int> GetScore(VoteDbContext dbContext, Guid targetId, VoteTargetType targetType)
     {
         // SUM over zero rows in SQL is NULL, not 0 (zero) -> happens when last vote is cleared
         return await dbContext.Votes
