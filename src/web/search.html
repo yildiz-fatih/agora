@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agora</title>
+</head>
+
+<body class="has-navbar-fixed-top">
+    <nav class="navbar is-fixed-top is-dark" role="navigation" aria-label="main navigation">
+        <div class="container">
+            <div class="navbar-brand">
+                <a class="navbar-item has-text-weight-bold is-size-4" href="index.html">agora</a>
+            </div>
+            <div class="navbar-menu">
+                <div class="navbar-start">
+                    <div class="navbar-item">
+                        <form action="search.html" method="GET">
+                            <input class="input" type="text" name="q" id="search-input" placeholder="Search…"
+                                autocomplete="off">
+                        </form>
+                    </div>
+                </div>
+                <div class="navbar-end">
+                    <div class="navbar-item">
+                        <div id="navbar-auth-guest">
+                            <button type="button" class="button is-link" id="login-btn">Login or Sign Up</button>
+                        </div>
+                        <div id="navbar-auth-user" class="buttons is-hidden">
+                            <span class="navbar-item has-text-weight-semibold" id="navbar-username"></span>
+                            <button type="button" class="button is-light" id="logout-btn">Log out</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container is-max-desktop mt-5">
+        <div class="column">
+            <h1 class="title is-4 mb-4" id="results-heading">Search</h1>
+            <div id="results-list"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/search.ts"></script>
+</body>
+
+</html>

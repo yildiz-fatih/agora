@@ -6,5 +6,6 @@ public record AnswerResponse(
     int Score,
     DateTime CreatedAt,
     Guid AuthorId,
+    string AuthorUsername,
     Guid QuestionId
 );

@@ -32,11 +32,17 @@ public class QuestionsController : ControllerBase
             return BadRequest("Author ID is missing or invalid");
         }
         
+        if (!AuthHelpers.TryGetAuthorUsername(User, out var authorUsername))
+        {
+            return BadRequest("Author username is missing or invalid");
+        }
+        
         var question = new Question
         {
             Title = request.Title,
             Body = request.Body,
             AuthorId = authorId,
+            AuthorUsername = authorUsername,
             Tags = request.Tags ?? []
         };
         
@@ -44,12 +50,12 @@ public class QuestionsController : ControllerBase
         await dbContext.SaveChangesAsync();
 
         /* TODO: transactional outbox - make the msg publish and DB save part of the same transaction */
-        var questionCreatedMsg =
-            new QuestionCreated(question.Id, question.Title, question.Body, question.Tags, question.CreatedAt);
+        var questionCreatedMsg = new QuestionCreated(question.Id, question.Title, question.Body, question.Tags,
+            question.CreatedAt, question.AuthorId, question.AuthorUsername);
         await messageBus.PublishAsync(questionCreatedMsg);
 
         var questionResponse = new QuestionResponse(question.Id, question.Title, question.Body, question.Score,
-            question.CreatedAt, question.AuthorId, question.Tags);
+            question.CreatedAt, question.AuthorId, authorUsername, question.Tags, 0);
         
         return Created($"/questions/{question.Id}", questionResponse);
     }
@@ -64,8 +70,10 @@ public class QuestionsController : ControllerBase
             query = query.Where(q => q.Tags.Contains(tag));
         }
 
-        var questionsResponse = await query.OrderByDescending(q => q.CreatedAt)
-            .Select(q => new QuestionResponse(q.Id, q.Title, q.Body, q.Score, q.CreatedAt, q.AuthorId, q.Tags)).ToListAsync();
+        var questionsResponse = await query
+            .OrderByDescending(q => q.CreatedAt)
+            .Select(q => new QuestionResponse(q.Id, q.Title, q.Body, q.Score, q.CreatedAt, q.AuthorId, q.AuthorUsername, q.Tags, q.Answers.Count))
+            .ToListAsync();
         
         return Ok(questionsResponse);
     }
@@ -84,11 +92,11 @@ public class QuestionsController : ControllerBase
         var answersResponse = question.Answers
             .OrderByDescending(a => a.Score)
             .ThenBy(a => a.CreatedAt)
-            .Select(a => new AnswerResponse(a.Id, a.Body, a.Score, a.CreatedAt, a.AuthorId, a.QuestionId))
+            .Select(a => new AnswerResponse(a.Id, a.Body, a.Score, a.CreatedAt, a.AuthorId, a.AuthorUsername, a.QuestionId))
             .ToList();
 
         var questionDetailsResponse = new QuestionDetailsResponse(question.Id, question.Title, question.Body,
-            question.Score, question.CreatedAt, question.AuthorId, question.Tags, answersResponse);
+            question.Score, question.CreatedAt, question.AuthorId, question.AuthorUsername, question.Tags, answersResponse);
         
         return Ok(questionDetailsResponse);
     }

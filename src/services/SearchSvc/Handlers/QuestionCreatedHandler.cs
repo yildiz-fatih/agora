@@ -22,7 +22,9 @@ public class QuestionCreatedHandler : IWolverineHandler
             Title = message.Title,
             Body = message.Body,
             Tags = message.Tags,
-            CreatedAt = message.CreatedAt
+            CreatedAt = message.CreatedAt,
+            AuthorId = message.AuthorId,
+            AuthorUsername = message.AuthorUsername
         };
         var createTask = await meiliClient.Index("questions").AddDocumentsAsync<SearchQuestion>([question]);
         await meiliClient.WaitForTaskAsync(createTask.TaskUid);

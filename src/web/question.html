@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agora</title>
+</head>
+
+<body class="has-navbar-fixed-top">
+    <nav class="navbar is-fixed-top is-dark" role="navigation" aria-label="main navigation">
+        <div class="container">
+            <div class="navbar-brand">
+                <a class="navbar-item has-text-weight-bold is-size-4" href="index.html">agora</a>
+            </div>
+            <div class="navbar-menu">
+                <div class="navbar-start">
+                    <div class="navbar-item">
+                        <form action="search.html" method="GET">
+                            <input class="input" type="text" name="q" id="search-input" placeholder="Search…"
+                                autocomplete="off">
+                        </form>
+                    </div>
+                </div>
+                <div class="navbar-end">
+                    <div class="navbar-item">
+                        <div id="navbar-auth-guest">
+                            <button type="button" class="button is-link" id="login-btn">Login or Sign Up</button>
+                        </div>
+                        <div id="navbar-auth-user" class="buttons is-hidden">
+                            <span class="navbar-item has-text-weight-semibold" id="navbar-username"></span>
+                            <button type="button" class="button is-light" id="logout-btn">Log out</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container is-max-desktop mt-5">
+        <div class="column">
+            <p class="has-text-grey" id="status-message"></p>
+
+            <div id="question-content" class="is-hidden">
+                <div class="box mb-5">
+                    <div class="columns">
+                        <div class="column is-narrow stats-column has-text-centered">
+                            <button type="button" class="button is-small is-white vote-btn" id="question-upvote"
+                                data-target-type="questions" data-direction="1">▲</button>
+                            <p class="has-text-weight-semibold is-size-4 my-2 vote-score" id="question-score">0</p>
+                            <button type="button" class="button is-small is-white vote-btn" id="question-downvote"
+                                data-target-type="questions" data-direction="-1">▼</button>
+                        </div>
+                        <div class="column">
+                            <h1 class="title is-4" id="question-title"></h1>
+                            <p class="mb-4" id="question-body"></p>
+                            <div class="level is-mobile mb-0">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <div class="tags mb-0" id="question-tags"></div>
+                                    </div>
+                                </div>
+                                <div class="level-right">
+                                    <div class="level-item">
+                                        <p class="has-text-grey" id="question-byline"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="title is-5 mb-4"><span id="answer-count">0</span> Answers</h2>
+                <div id="answers-list"></div>
+
+                <div class="box mt-5">
+                    <h2 class="title is-5 mb-3">Your Answer</h2>
+                    <form id="answer-form">
+                        <div class="field">
+                            <div class="control">
+                                <textarea class="textarea" id="answer-body" rows="6" required
+                                    placeholder="Write your answer…"></textarea>
+                            </div>
+                        </div>
+                        <p class="has-text-danger is-hidden mb-4" id="answer-error"></p>
+                        <div class="field">
+                            <div class="control">
+                                <button type="submit" class="button is-link" id="answer-submit">Post Your
+                                    Answer</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/question.ts"></script>
+</body>
+
+</html>

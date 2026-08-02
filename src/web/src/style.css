@@ -1,0 +1,20 @@
+:root {
+    --bulma-link-h: 169deg;
+    --bulma-link-s: 41%;
+    --bulma-link-l: 58%;
+}
+
+.stats-column {
+    border-right: 1px solid var(--bulma-border);
+}
+
+.box {
+    box-shadow: none;
+    border: 1px solid var(--bulma-border);
+}
+
+.button,
+.input,
+.textarea {
+    box-shadow: none;
+}

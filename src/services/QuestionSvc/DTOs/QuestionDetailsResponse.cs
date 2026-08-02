@@ -7,6 +7,7 @@ public record QuestionDetailsResponse(
     int Score,
     DateTime CreatedAt,
     Guid AuthorId,
+    string AuthorUsername,
     List<string> Tags,
     ICollection<AnswerResponse> Answers
 );

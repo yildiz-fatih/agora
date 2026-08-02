@@ -32,6 +32,11 @@ public class AnswersController : ControllerBase
             return BadRequest("Author ID is missing or invalid");
         }
         
+        if (!AuthHelpers.TryGetAuthorUsername(User, out var authorUsername))
+        {
+            return BadRequest("Author username is missing or invalid");
+        }
+        
         var questionExists = await dbContext.Questions.AnyAsync(q => q.Id == questionId);
         if (!questionExists)
         {
@@ -42,6 +47,7 @@ public class AnswersController : ControllerBase
         {
             Body = request.Body,
             AuthorId = authorId,
+            AuthorUsername = authorUsername,
             QuestionId = questionId
         };
 
@@ -52,7 +58,7 @@ public class AnswersController : ControllerBase
         await messageBus.PublishAsync(new AnswerCreated(answer.Id, answer.QuestionId));
 
         var answerResponse = new AnswerResponse(answer.Id, answer.Body, answer.Score, answer.CreatedAt, answer.AuthorId,
-            answer.QuestionId);
+            answer.AuthorUsername, answer.QuestionId);
         
         return StatusCode(StatusCodes.Status201Created, answerResponse);
     }

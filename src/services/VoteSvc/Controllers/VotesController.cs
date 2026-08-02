@@ -24,6 +24,43 @@ public class VotesController : ControllerBase
         this.messageBus = messageBus;
     }
     
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMyVotes([FromQuery] Guid? questionId, [FromQuery] string? answerIds)
+    {
+        if (!TryGetVoterId(User, out var voterId))
+        {
+            return Unauthorized("User ID is missing or invalid");
+        }
+
+        var targetIds = new List<Guid>();
+        if (questionId.HasValue)
+        {
+            targetIds.Add(questionId.Value);
+        }
+        if (!string.IsNullOrWhiteSpace(answerIds))
+        {
+            foreach (var idString in answerIds.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (Guid.TryParse(idString, out var answerId))
+                {
+                    targetIds.Add(answerId);
+                }
+            }
+        }
+
+        if (targetIds.Count == 0)
+        {
+            return Ok(Array.Empty<MyVoteResponse>());
+        }
+        
+        var myVotes = await dbContext.Votes
+            .Where(v => v.VoterId == voterId && targetIds.Contains(v.TargetId))
+            .Select(v => new MyVoteResponse(v.TargetId, v.TargetType.ToString(), v.Value))
+            .ToListAsync();
+
+        return Ok(myVotes);
+    }
+    
     [HttpPut("questions/{questionId}")]
     public async Task<IActionResult> VoteQuestion([FromRoute] Guid questionId, [FromBody] VoteRequest request)
     {

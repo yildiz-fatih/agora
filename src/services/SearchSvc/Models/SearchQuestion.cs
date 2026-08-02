@@ -14,4 +14,8 @@ public class SearchQuestion
     public List<string> Tags { get; set; }
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("authorId")]
+    public Guid AuthorId { get; set; }
+    [JsonPropertyName("authorUsername")]
+    public string AuthorUsername { get; set; }
 }

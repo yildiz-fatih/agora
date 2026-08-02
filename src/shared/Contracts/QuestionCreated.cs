@@ -5,5 +5,7 @@ public record QuestionCreated(
     string Title,
     string Body,
     List<string> Tags,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    Guid AuthorId,
+    string AuthorUsername
 );

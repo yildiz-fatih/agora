@@ -7,5 +7,7 @@ public record QuestionResponse(
     int Score,
     DateTime CreatedAt,
     Guid AuthorId,
-    List<string> Tags
+    string AuthorUsername,
+    List<string> Tags,
+    int AnswerCount
 );

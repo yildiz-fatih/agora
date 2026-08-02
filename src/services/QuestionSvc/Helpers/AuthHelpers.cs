@@ -16,4 +16,18 @@ public static class AuthHelpers
         
         return true;
     }
+    
+    public static bool TryGetAuthorUsername(ClaimsPrincipal user, out string authorUsername)
+    {
+        authorUsername = string.Empty;
+
+        var value = user.FindFirstValue("preferred_username");
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        authorUsername = value;
+        return true;
+    }
 }
