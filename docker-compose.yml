@@ -146,6 +146,19 @@ services:
       - "7004:8080"
     restart: unless-stopped
 
+  web:
+    build:
+      context: src/web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_KEYCLOAK_AUTHORITY: ${VITE_KEYCLOAK_AUTHORITY}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
+    ports:
+      - "5173:80"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
 volumes:
   keycloak-data:
   postgres-data:
