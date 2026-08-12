@@ -1,5 +1,5 @@
 # build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.400-alpine3.24 AS build
 WORKDIR /src
 COPY QuestionSvc.csproj .
 COPY --from=contracts . /shared/Contracts
@@ -8,7 +8,7 @@ COPY . .
 RUN dotnet publish QuestionSvc.csproj -c Release -o /app --no-restore
 
 # runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.11-alpine3.24 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 ENTRYPOINT ["dotnet", "QuestionSvc.dll"]

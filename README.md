@@ -1,6 +1,6 @@
 # agora
 
-Agora is a Q&A app (similar to Stack Overflow).
+Agora is a Q&A app, built as microservices.
 
 This is a learning project. The goal is to build something real enough to run into some of the problems and tradeoffs of microservices: data ownership, eventual consistency, the dual-write problem, duplicate message delivery and replicated read models.
 
